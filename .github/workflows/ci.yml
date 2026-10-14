@@ -1,0 +1,152 @@
+name: CI / CD
+
+'on':
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ftp_admin
+          POSTGRES_PASSWORD: localpassword
+          POSTGRES_DB: finetuning
+        ports:
+          - '5432:5432'
+        options: '--health-cmd pg_isready --health-interval 10s --health-timeout 5s
+          --health-retries 5'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        # heulistic-axolotl is not on PyPI yet; the API imports it for config
+        # validation, so it is installed from the monorepo.
+        run: |
+          pip install -r api/requirements.txt
+          pip install ./packages/heulistic-axolotl
+      - name: Run tests
+        working-directory: api
+        env:
+          DATABASE_URL: postgresql+asyncpg://ftp_admin:localpassword@localhost:5432/finetuning
+          S3_BUCKET: test-bucket
+          LOCAL_MODE: 'false'
+          FRONTEND_URL: http://localhost:3000
+          STRIPE_SECRET_KEY: sk_test_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_dummy
+          MAX_DATASET_SIZE_MB: '10'
+        run: pytest
+
+  scheduler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r scheduler/requirements.txt pytest
+      - name: Run tests
+        working-directory: scheduler
+        run: pytest
+
+  training:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install -r training/requirements.txt pytest
+          pip install ./packages/heulistic-axolotl
+      - name: Run tests
+        working-directory: training
+        run: pytest
+
+  heulistic-axolotl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pytest pyyaml
+      - name: Run tests
+        working-directory: packages/heulistic-axolotl
+        run: pytest
+
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        # heulistic-axolotl is not on PyPI yet, so it is installed from the
+        # monorepo; pytest.ini_options adds it to the path for the test run.
+        run: pip install pytest pyyaml 'typer>=0.12'
+      - name: Run tests
+        working-directory: cli
+        run: pytest
+
+  # Build the images on every push, not only on release tags. Two releases have
+  # now failed at the image build — a missing reference file, then a missing
+  # empty directory — both of which built fine locally and only broke from a
+  # clean checkout. Training is excluded: it is many GB and needs the
+  # free-disk-space dance, so it stays on the tag path.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build api (root context, for packages/heulistic-axolotl)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./api/Dockerfile
+          push: false
+      - name: Build scheduler
+        uses: docker/build-push-action@v6
+        with:
+          context: ./scheduler
+          push: false
+      - name: Build frontend-local
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend-local
+          push: false
+
+  frontend-local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: frontend-local
+        run: npm ci
+      - name: Lint
+        working-directory: frontend-local
+        run: npm run lint
+      - name: Typecheck
+        working-directory: frontend-local
+        run: npx tsc --noEmit
+      - name: Run tests
+        working-directory: frontend-local
+        run: npm run test

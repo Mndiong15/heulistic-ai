@@ -1,0 +1,14 @@
+# Applies to `docker build -f training/Dockerfile .` and replaces the root
+# .dockerignore, which is written for the API image and excludes training/.
+# An allowlist: the context is the whole repo, but the image needs only these.
+*
+!training/train.py
+!training/model_eval.py
+!training/export.py
+!training/requirements.txt
+!packages/heulistic-axolotl/pyproject.toml
+!packages/heulistic-axolotl/README.md
+!packages/heulistic-axolotl/LICENSE
+!packages/heulistic-axolotl/src
+**/__pycache__
+**/*.py[cod]

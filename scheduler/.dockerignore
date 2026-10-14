@@ -1,0 +1,9 @@
+# Keeps the local virtualenv and caches out of the image — they are ~45-70 MB
+# against ~250 KB of actual source.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+tests/
+# Local settings, possibly with credentials — never part of an image.
+.env

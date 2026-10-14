@@ -1,0 +1,248 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Manual runs rehearse a release against TestPyPI, and nothing else. A PyPI
+  # version can never be reused, so a first upload is worth getting right
+  # somewhere disposable.
+  #
+  # TestPyPI is the only option on purpose. The container jobs below are gated
+  # to tag pushes, because they tag images from the git ref — so a manual run
+  # aimed at real PyPI would publish the Python packages while silently
+  # skipping every image, leaving a release half-done. That happened once.
+  # Real releases come from a tag, which publishes both.
+  workflow_dispatch:
+    inputs:
+      pypi_target:
+        description: 'Rehearsal target (real releases come from a v* tag)'
+        type: choice
+        options:
+          - testpypi
+        default: testpypi
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # Nothing publishes until the tag and the version agree. The tag names the
+  # container images while PyPI takes its version from cli/pyproject.toml, so
+  # without this a v0.1.3 tag can publish PyPI 0.1.2 — which is how
+  # `heulistic 0.1.3` once sat beside `api:v0.1.2`.
+  check-version:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test the guard, then run it
+        run: |
+          pip install --quiet pytest
+          python -m pytest -q scripts/tests
+          python scripts/check_release_version.py "${{ github.ref_name }}"
+
+  # ── API, Scheduler, Frontend ─────────────────────────────────────────────────
+  publish-lightweight:
+    needs: check-version
+    # Images are tagged with the git ref, which is meaningless on a
+    # manual run — restrict them to tag pushes.
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api
+            context: .
+            dockerfile: ./api/Dockerfile
+          - service: scheduler
+            context: ./scheduler
+            dockerfile: ./scheduler/Dockerfile
+          - service: frontend-local
+            context: ./frontend-local
+            dockerfile: ./frontend-local/Dockerfile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            heulistic/${{ matrix.service }}:latest
+            heulistic/${{ matrix.service }}:${{ github.ref_name }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # ── Training (large GPU image — free disk space first) ───────────────────────
+  publish-training:
+    needs: check-version
+    # Images are tagged with the git ref, which is meaningless on a
+    # manual run — restrict them to tag pushes.
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push training
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./training/Dockerfile
+          push: true
+          tags: |
+            heulistic/training:latest
+            heulistic/training:${{ github.ref_name }}
+          cache-from: type=gha,scope=training
+          cache-to: type=gha,mode=max,scope=training
+
+  # ── CLI → PyPI ───────────────────────────────────────────────────────────────
+  # ── heulistic-axolotl → PyPI ─────────────────────────────────────────────────
+  # Published before the CLI, which declares it as a dependency. Its version
+  # moves independently of the CLI's, so most tags will re-run this job with an
+  # unchanged version — skip-existing turns that into a no-op instead of the
+  # error PyPI returns for a duplicate upload.
+  publish-pypi-axolotl:
+    needs: [check-version, publish-lightweight, publish-training]
+    # PyPI is the irreversible half of a release — a version there can never be
+    # reused — so it goes after the images, which can simply be overwritten.
+    # A failed image build then costs nothing but a re-tag.
+    #
+    # `always()` is required because the image jobs are skipped on a manual
+    # rehearsal, and a skipped dependency would otherwise skip this job too.
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' ||
+       (needs.check-version.result == 'success' &&
+        needs.publish-lightweight.result == 'success' &&
+        needs.publish-training.result == 'success'))
+    runs-on: ubuntu-latest
+    # A distinct environment from the CLI's on purpose. PyPI identifies a
+    # *pending* publisher by (owner, repo, workflow, environment) alone — the
+    # project name is not in the OIDC token — so two pending publishers cannot
+    # share one configuration. Different environments keep them apart.
+    environment: pypi-axolotl
+    permissions:
+      # A permissions block REPLACES the defaults rather than merging, so
+      # `contents: read` has to be spelled out — without it checkout cannot
+      # fetch a private repository and fails with "Repository not found".
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build package
+        run: |
+          pip install --upgrade build
+          python -m build
+        working-directory: packages/heulistic-axolotl
+
+      # Which index is being targeted is otherwise invisible in the log, and a
+      # trusted-publishing failure looks identical on both.
+      - name: Report target index
+        run: |
+          echo "Uploading to:  $TARGET_INDEX"
+          echo "The trusted publisher must exist on THAT index, registered with:"
+          echo "  owner       = ${{ github.repository_owner }}"
+          echo "  repository  = fine-tuning-platform"
+          echo "  workflow    = publish.yml"
+          echo "  environment = ${{ github.job == 'publish-pypi-axolotl' && 'pypi-axolotl' || 'pypi' }}"
+        env:
+          TARGET_INDEX: ${{ (github.event_name == 'workflow_dispatch' && inputs.pypi_target == 'testpypi')
+            && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/heulistic-axolotl/dist/
+          skip-existing: true
+          repository-url: ${{ (github.event_name == 'workflow_dispatch' && inputs.pypi_target == 'testpypi')
+            && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+
+  # ── heulistic (CLI) → PyPI ───────────────────────────────────────────────────
+  publish-pypi:
+    needs: publish-pypi-axolotl
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # A permissions block REPLACES the defaults rather than merging, so
+      # `contents: read` has to be spelled out — without it checkout cannot
+      # fetch a private repository and fails with "Repository not found".
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build package
+        run: |
+          pip install --upgrade build
+          python -m build
+        working-directory: cli
+
+      # Which index is being targeted is otherwise invisible in the log, and a
+      # trusted-publishing failure looks identical on both.
+      - name: Report target index
+        run: |
+          echo "Uploading to:  $TARGET_INDEX"
+          echo "The trusted publisher must exist on THAT index, registered with:"
+          echo "  owner       = ${{ github.repository_owner }}"
+          echo "  repository  = fine-tuning-platform"
+          echo "  workflow    = publish.yml"
+          echo "  environment = ${{ github.job == 'publish-pypi-axolotl' && 'pypi-axolotl' || 'pypi' }}"
+        env:
+          TARGET_INDEX: ${{ (github.event_name == 'workflow_dispatch' && inputs.pypi_target == 'testpypi')
+            && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: cli/dist/
+          skip-existing: true
+          repository-url: ${{ (github.event_name == 'workflow_dispatch' && inputs.pypi_target == 'testpypi')
+            && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}

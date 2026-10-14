@@ -1,0 +1,4 @@
+FROM python:3.11-slim
+RUN pip install --no-cache-dir "moto[server]>=5"
+EXPOSE 9000
+CMD ["moto_server", "s3", "-H", "0.0.0.0", "-p", "9000"]

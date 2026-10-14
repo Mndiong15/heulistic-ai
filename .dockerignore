@@ -1,0 +1,35 @@
+# Build context for the API image (context is the repo root so that the
+# shared heulistic-axolotl package can be installed from source).
+# Without these rules the venvs alone add ~320 MB to the context.
+
+# Environments and build artifacts
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/node_modules/
+**/.next/
+**/dist/
+**/*.egg-info/
+**/tsconfig.tsbuildinfo
+
+# VCS and CI
+.git/
+.gitignore
+.github/
+
+# Secrets and local state
+**/.env
+**/.env.local
+**/*.tfstate
+**/*.tfstate.backup
+**/.terraform/
+
+# Services that are built from their own contexts
+frontend/
+frontend-local/
+studio/
+infra/
+scheduler/
+training/
+cli/

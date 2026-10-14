@@ -1,0 +1,43 @@
+# Secrets — never commit actual env files
+.env
+.env.local
+*.env.local
+.env.local.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+.pytest_cache/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# miscellaneous files
+prd.txt
+config.yaml
+ARCHITECTURE.md
+qwen-config.yaml
+stripe-usage-billing.md
+
+# The scratch copy at the repo root is ignored, but the reference vendored into
+# heulistic-axolotl is the generator's input and must be committed. Without the
+# negation the bare pattern matched it at any depth, so it was silently absent
+# from CI while present locally.
+axolotl.yaml
+!packages/heulistic-axolotl/reference/axolotl.yaml

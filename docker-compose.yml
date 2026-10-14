@@ -1,0 +1,108 @@
+name: heulistic
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: heulistic
+      POSTGRES_USER: heulistic_admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heulistic_admin -d heulistic"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+        until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+        mc mb local/heulistic-local --ignore-existing;
+        exit 0"
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    # Local-only defaults, matching the db and minio services above.
+    environment:
+      DATABASE_URL: postgresql+asyncpg://heulistic_admin:password@db:5432/heulistic
+      LOCAL_MODE: "true"
+      S3_BUCKET: heulistic-local
+      S3_ENDPOINT_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      FRONTEND_URL: http://localhost:3000
+      API_PUBLIC_URL: http://localhost:8000
+      AWS_REGION: us-east-1
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:edge
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  scheduler:
+    build: ./scheduler
+    environment:
+      DATABASE_URL: postgresql://heulistic_admin:password@db:5432/heulistic
+      LOCAL_MODE: "true"
+      API_INTERNAL_URL: http://api:8000
+      # Pulled from Docker Hub; build training/Dockerfile and tag it to test changes.
+      LOCAL_TRAINING_IMAGE: heulistic/training:latest
+      DOCKER_NETWORK: heulistic_default
+      LOCAL_CACHE_VOLUME: heulistic-cache
+      LOCAL_GPU: "${LOCAL_GPU:-true}"
+      GPUS_PER_JOB: "${GPUS_PER_JOB:-0}"
+      LOCAL_GPU_COUNT: "${LOCAL_GPU_COUNT:-0}"
+      HF_TOKEN: "${HF_TOKEN:-}"
+      AWS_REGION: us-east-1
+      DOCKER_SOCKET: tcp://docker-proxy:2375
+    depends_on:
+      - api
+      - docker-proxy
+
+  frontend:
+    build:
+      context: ./frontend-local
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  minio_data:
+  heulistic-cache:

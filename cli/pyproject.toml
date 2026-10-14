@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "heulistic"
+version = "0.1.4"
+description = "Fine-tune LLMs without the infrastructure"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Heulistic", email = "hello@heulistic.com" }]
+keywords = ["llm", "fine-tuning", "machine-learning", "axolotl", "lora", "qlora"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "typer>=0.12",
+    # Upper bound because the schema API can change shape between minors.
+    "heulistic-axolotl>=0.1.1,<0.2.0",  # 0.1.1: export (GGUF sizes, recommend_quant)
+]
+
+[project.urls]
+Homepage = "https://heulistic.com"
+Documentation = "https://heulistic.com/docs"
+
+[project.scripts]
+heulistic = "heulistic.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["heulistic"]
+
+[tool.pytest.ini_options]
+# Until heulistic-axolotl is on PyPI, the sibling package is imported from the
+# monorepo. A real install resolves it through the dependency above instead.
+pythonpath = [".", "../packages/heulistic-axolotl/src"]
+testpaths = ["tests"]
