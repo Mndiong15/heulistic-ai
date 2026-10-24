@@ -61,6 +61,9 @@ jobs:
           - service: scheduler
             context: ./scheduler
             dockerfile: ./scheduler/Dockerfile
+          - service: frontend
+            context: ./frontend
+            dockerfile: ./frontend/Dockerfile
           - service: frontend-local
             context: ./frontend-local
             dockerfile: ./frontend-local/Dockerfile

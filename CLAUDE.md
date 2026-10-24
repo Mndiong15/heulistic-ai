@@ -4,15 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Heulistic** — fine-tune large language models with Axolotl on your own GPUs. Users bring an Axolotl YAML config and a dataset; Heulistic validates it, queues and runs the job in Docker, streams logs and metrics, compares the result with the base model, and exports it to GGUF for Ollama.
+**Heulistic** — a web-based platform for fine-tuning large language models without infrastructure management. Users upload an Axolotl YAML config and optional dataset; the platform handles GPU provisioning (AWS EC2 or local Docker), distributed training, real-time monitoring, and cost billing.
 
-This repository is the open-source local product: the `heulistic` CLI, the shared validator, the API, scheduler and training container, and the local dashboard. The hosted service (Heulistic Cloud) runs the same API, scheduler and trainer on AWS; its cloud-only parts — Cognito auth, Stripe billing and the EC2 provisioner — are in this code but switched off when `LOCAL_MODE=true`. The cloud website and infrastructure are not in this repository.
+The project is **fully implemented and deployed**. All four components (frontend, API, scheduler, training) are production-grade with auth, billing, and infra wired up.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Dashboard | Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts — ships as `heulistic/frontend-local` |
+| Frontend (production) | Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, Recharts |
+| Frontend (local mode) | Next.js 14, minimal 3-route build — ships as `heulistic/frontend-local:latest` |
 | API | FastAPI (Python 3.12), SQLAlchemy 2 (async), Alembic, PostgreSQL 15 |
 | Auth | AWS Cognito (JWT-based); local mode uses a fixed test user |
 | Storage | AWS S3 in production; MinIO in local mode |
@@ -20,7 +21,10 @@ This repository is the open-source local product: the `heulistic` CLI, the share
 | Compute | AWS EC2 GPU (g4dn / g5 / g6 / g6e families) in production; Docker sibling containers locally |
 | Training | Axolotl + PyTorch — LoRA, QLoRA, full fine-tune |
 | Billing | Stripe (credit packages + off-session overage charges) |
-| Container | Docker (images on Docker Hub as `heulistic/*`) |
+| Blog | Sanity CMS + `/studio` |
+| Analytics | PostHog, Sentry |
+| Container | Docker + AWS ECR |
+| IaC | Terraform (`/infra`) |
 | CLI | `heulistic` Python package (`/cli`) |
 | Config validation | `heulistic-axolotl` (`/packages/heulistic-axolotl`) — schema generated from Axolotl's config reference; shared by the API and CLI |
 
@@ -30,22 +34,25 @@ This repository is the open-source local product: the `heulistic` CLI, the share
 /api              FastAPI service
 /scheduler        Job dispatcher + watchdog
 /training         Axolotl training container entrypoint
-/frontend-local   Local dashboard (Next.js)
+/frontend         Production Next.js app (Vercel / Docker)
+/frontend-local   Stripped-down local dashboard
 /cli              `heulistic` CLI (validate-config + local stack management)
 /packages         Shared libraries — `heulistic-axolotl` (Axolotl schema + validation)
+/infra            Terraform (VPC, EC2, RDS, S3, EFS, ECR, Cognito, ALB)
+/studio           Sanity CMS studio
 ```
 
 ## Architecture
 
-Four services, run together by `docker-compose.yml` (or `heulistic start`):
+Four independently deployed services:
 
-1. **Dashboard** (`/frontend-local`) — Next.js. Pages: `/train` (job submit), `/jobs` (list), `/jobs/[id]` (monitoring, before/after report, export), `/docs`.
+1. **Frontend** (`/frontend`) — Next.js on Vercel. AWS Cognito auth; JWT stored in browser, sent as `Authorization: Bearer` header. Pages: `/` (landing), `/train` (job submit), `/jobs` (list), `/jobs/[id]` (monitoring), `/credits`, `/admin`, `/blog`.
 
-2. **API** (`/api`) — FastAPI. Handles all user-facing and internal endpoints, billing settlement, SSE log streaming, and S3 presigned URLs. Runs Alembic migrations on startup.
+2. **API** (`/api`) — FastAPI on EC2 behind ALB. Handles all user-facing and internal endpoints, billing settlement, SSE log streaming, and S3 presigned URLs. Runs Alembic migrations on startup.
 
 3. **Scheduler** (`/scheduler`) — Python process on EC2 t3.small. Polls DB every 10 s; dispatches eligible jobs; runs watchdog every N ticks to terminate orphaned instances. Two provisioner backends: `provisioner.py` (EC2) and `local_provisioner.py` (Docker via socket proxy).
 
-4. **Training Container** (`/training`) — Ephemeral Docker image per job. Downloads config + dataset from S3/EFS, patches the Axolotl config, runs training, streams logs + metrics to API, uploads model and checkpoints to S3, then exits.
+4. **Training Container** (`/training`) — Ephemeral Docker image per job (ECR). Downloads config + dataset from S3/EFS, patches the Axolotl config, runs training, streams logs + metrics to API, uploads model and checkpoints to S3, then exits.
 
 ### Job Lifecycle
 
@@ -140,7 +147,7 @@ Managed by Alembic (12 migrations). Key tables:
 - `postgres:15`, `minio/minio` + `minio-init` (bucket setup)
 - `api` (with `LOCAL_MODE=true`), `scheduler` (uses `local_provisioner.py`)
 - `docker-proxy` (tecnativa/docker-socket-proxy) — lets scheduler run training containers safely
-- `frontend` (built from `./frontend-local`)
+- `frontend` or `heulistic/frontend-local:latest`
 
 The `heulistic` CLI manages this:
 ```bash
@@ -157,17 +164,25 @@ cd api && uvicorn app.main:app --reload      # dev server (port 8000)
 cd api && pytest                              # all tests
 cd api && pytest tests/test_jobs.py -k name  # single test
 
-# Dashboard
-cd frontend-local && NEXT_PUBLIC_LOCAL_MODE=true npm run dev   # port 3000
+# Frontend (production)
+cd frontend && npm run dev                    # dev server (port 3000)
+cd frontend && npm run build
+cd frontend && npm run lint
+cd frontend && npm run test                   # vitest unit tests
+
+# Frontend (local)
+cd frontend-local && npm run dev
 cd frontend-local && npm run build
-cd frontend-local && npm run lint
-cd frontend-local && npm run test             # vitest unit tests
 
 # Scheduler
 cd scheduler && python main.py
 
 # Full local stack
 docker compose up --build                    # or: heulistic start
+
+# Infrastructure
+cd infra && terraform plan
+cd infra && terraform apply
 ```
 
 ## Testing
@@ -177,7 +192,7 @@ docker compose up --build                    # or: heulistic start
 - **CLI**: pytest in `cli/tests/`.
 - **Scheduler**: pytest in `scheduler/tests/`: `test_main.py`, `test_provisioner.py`, `test_local_provisioner.py`, `test_watchdog.py`.
 - **Training**: pytest in `training/tests/`: `test_train_utils.py`.
-- **Dashboard**: vitest in `frontend-local/src/lib/*.test.ts`.
+- **Frontend**: vitest in `frontend/src/lib/*.test.ts`.
 
 ## Environment Variables
 

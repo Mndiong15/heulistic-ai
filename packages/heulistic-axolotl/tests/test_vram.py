@@ -5,7 +5,8 @@ of `api/app/services/cost.py::_vram_required_gb`, which drives cloud instance
 selection and therefore billing. The expected numbers below are computed from
 that formula by hand so a drift in either copy shows up here.
 
-Superseded heuristic: an earlier browser-side estimate, which used weights x1.5 (PEFT) / x4 (full) with a 0.7 gradient-checkpointing discount,
+Superseded heuristic: `frontend/src/lib/validate-config.ts::_estimateVramGb`
+used weights x1.5 (PEFT) / x4 (full) with a 0.7 gradient-checkpointing discount,
 which disagreed wildly at scale — ~157 GB vs ~1344 GB for a 70B full fine-tune.
 The cost.py formula wins because money depends on it.
 """
