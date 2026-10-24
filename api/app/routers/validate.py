@@ -1,7 +1,7 @@
 """Config validation, shared with the CLI.
 
 Both frontends call this instead of carrying their own copy of the Axolotl
-rules — the same `heulistic-axolotl` package backs `heulistic validate-config`
+rules — the same `heulistic.axolotl` module backs `heulistic validate-config`
 and job submission, so all three agree on what a valid config is.
 
 A broken config is a 200 with diagnostics, not a 4xx: the caller's job is to
@@ -10,7 +10,7 @@ show the user what is wrong, which a rejected request cannot do.
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from heulistic_axolotl import validate as validate_config
+from heulistic.axolotl import validate as validate_config
 
 from ..dependencies import get_current_user
 from ..models.db import User

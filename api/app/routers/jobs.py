@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from heulistic_axolotl import (
+from heulistic.axolotl import (
     GGUF_QUANTS,
     gguf_size_gb,
     inference_memory_gb,
@@ -128,7 +128,7 @@ def _validate_config(
 ) -> None:
     """Reject a config the shared validator considers broken.
 
-    Rules live in `heulistic-axolotl`, whose schema is generated from Axolotl's
+    Rules live in `heulistic.axolotl`, whose schema is generated from Axolotl's
     own config reference — so field names, types, defaults and required-ness
     track upstream instead of a hand-maintained list here. The CLI's
     `heulistic validate-config` runs exactly the same rules, so what passes

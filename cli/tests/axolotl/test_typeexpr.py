@@ -5,7 +5,7 @@ Every expression here is copied verbatim from the Axolotl config reference
 invented shapes.
 """
 
-from heulistic_axolotl.spec import parse_type
+from heulistic.axolotl.spec import parse_type
 
 
 # ── Primitives ────────────────────────────────────────────────────────────────

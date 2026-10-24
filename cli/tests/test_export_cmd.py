@@ -89,7 +89,7 @@ def test_registers_the_model_with_ollama_when_it_is_installed(api, monkeypatch, 
 
 class TestChoosingAFormat:
     def test_picks_the_best_that_fits_the_gpu(self, api, monkeypatch):
-        from heulistic_axolotl.vram import Hardware
+        from heulistic.axolotl.vram import Hardware
         monkeypatch.setattr(gpu, "detect_hardware",
                             lambda: Hardware(total_vram_gb=24, gpu_count=1, label="RTX 4090"))
         result = run("src-1234-5678")

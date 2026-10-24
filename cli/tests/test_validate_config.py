@@ -202,7 +202,7 @@ def test_python_m_heulistic_runs_the_cli(config, tmp_path):
     repo = Path(__file__).resolve().parents[2]
     env = {
         "PATH": os.environ.get("PATH", ""),
-        "PYTHONPATH": f"{repo / 'cli'}:{repo / 'packages/heulistic-axolotl/src'}",
+        "PYTHONPATH": str(repo / "cli"),
     }
     result = subprocess.run(
         [sys.executable, "-m", "heulistic", "validate-config", config(HAS_ERROR)],

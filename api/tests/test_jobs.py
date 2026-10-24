@@ -923,7 +923,7 @@ class TestMultiNodeRejection:
         assert "multi-node" in resp.json()["detail"].lower()
 
 
-# ── Validation delegated to heulistic-axolotl ─────────────────────────────────
+# ── Validation delegated to heulistic.axolotl ─────────────────────────────────
 
 
 @pytest.mark.asyncio

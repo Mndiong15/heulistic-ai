@@ -7,7 +7,7 @@ llama.cpp's effective figures, including the per-block scales.
 
 import pytest
 
-from heulistic_axolotl.inference import (
+from heulistic.axolotl.inference import (
     GGUF_QUANTS,
     gguf_size_gb,
     inference_memory_gb,
@@ -69,7 +69,7 @@ class TestRecommend:
 
 # ── Exporting ─────────────────────────────────────────────────────────────────
 
-from heulistic_axolotl.inference import export_scratch_gb  # noqa: E402
+from heulistic.axolotl.inference import export_scratch_gb  # noqa: E402
 
 
 def test_export_scratch_covers_merged_weights_and_the_full_precision_gguf():

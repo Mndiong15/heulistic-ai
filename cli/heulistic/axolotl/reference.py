@@ -6,7 +6,7 @@ input to schema generation, not something read at runtime — `schema.py` is
 generated from it and committed, so refreshing Axolotl support is:
 
     1. replace `reference/axolotl.yaml` with the new upstream reference
-    2. run `python -m heulistic_axolotl.generate`
+    2. run `python -m heulistic.axolotl.generate`
     3. run the tests — `test_real_reference.py` reports what changed
 """
 

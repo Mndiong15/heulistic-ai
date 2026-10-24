@@ -5,10 +5,10 @@ first test here is the one that matters: it fails if the reference was edited
 without re-running the generator.
 """
 
-from heulistic_axolotl._reference import parse_reference
-from heulistic_axolotl.generate import render
-from heulistic_axolotl.reference import reference_text
-from heulistic_axolotl.schema import (
+from heulistic.axolotl._reference import parse_reference
+from heulistic.axolotl.generate import render
+from heulistic.axolotl.reference import reference_text
+from heulistic.axolotl.schema import (
     SCHEMA,
     get_field,
     get_model,
@@ -20,18 +20,18 @@ from heulistic_axolotl.schema import (
 def test_generated_schema_is_up_to_date():
     """Fails when reference/axolotl.yaml changed but the schema wasn't regenerated.
 
-    Fix by running:  python -m heulistic_axolotl.generate
+    Fix by running:  python -m heulistic.axolotl.generate
     """
     from pathlib import Path
 
-    import heulistic_axolotl
+    import heulistic.axolotl
 
     committed = (
-        Path(heulistic_axolotl.__file__).parent / "_schema_data.py"
+        Path(heulistic.axolotl.__file__).parent / "_schema_data.py"
     ).read_text(encoding="utf-8")
     expected = render(parse_reference(reference_text()))
     assert committed == expected, (
-        "Generated schema is stale — run: python -m heulistic_axolotl.generate"
+        "Generated schema is stale — run: python -m heulistic.axolotl.generate"
     )
 
 

@@ -371,7 +371,7 @@ def _gpu_inventory() -> tuple[int, float]:
 def plan_gpus(cfg: dict, gpu_count: int, per_gpu_vram_gb: float):
     """Decide how to spread training over the GPUs; shard when one is too small.
 
-    Uses heulistic-axolotl's planner — the same one the API used to choose this
+    Uses heulistic.axolotl's planner — the same one the API used to choose this
     instance and the validator used to check the config, so what was promised
     is what runs. Mutates `cfg` to add a ZeRO-3 config when sharding is needed
     and the user configured none. Returns the plan, or None on a single GPU or
@@ -379,7 +379,7 @@ def plan_gpus(cfg: dict, gpu_count: int, per_gpu_vram_gb: float):
     """
     if gpu_count < 2 or per_gpu_vram_gb <= 0:
         return None
-    from heulistic_axolotl import Hardware, plan_parallelism
+    from heulistic.axolotl import Hardware, plan_parallelism
 
     plan = plan_parallelism(
         cfg, Hardware(total_vram_gb=per_gpu_vram_gb * gpu_count, gpu_count=gpu_count)

@@ -13,16 +13,15 @@ from typing import Optional
 
 import typer
 
-from . import gpu
-from ._deps import require_axolotl
+from . import axolotl, gpu
 
 
 def validate(config_yaml):
-    return require_axolotl().validate(config_yaml)
+    return axolotl.validate(config_yaml)
 
 
 def vram_required_gb(config):
-    return require_axolotl().vram.vram_required_gb(config)
+    return axolotl.vram.vram_required_gb(config)
 
 # QLoRA-friendly models, smallest first. The largest entry that fits the card
 # wins.

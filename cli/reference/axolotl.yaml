@@ -6,7 +6,7 @@
 # Do not hand-edit. To refresh for a new Axolotl release, replace the body
 # below with the current upstream reference, keep this header, then run:
 #
-#     python -m heulistic_axolotl.generate
+#     cd cli && python -m heulistic.axolotl.generate
 #
 # The blank line below is load-bearing: without it this header would be read
 # as the doc comment for the first field.

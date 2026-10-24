@@ -1,5 +1,5 @@
 # Build context for the API image (context is the repo root so that the
-# shared heulistic-axolotl package can be installed from source).
+# heulistic package in cli/ can be installed from source).
 # Without these rules the venvs alone add ~320 MB to the context.
 
 # Environments and build artifacts
@@ -32,4 +32,7 @@ studio/
 infra/
 scheduler/
 training/
-cli/
+# The API installs the heulistic package from cli/, but not its tests or the
+# schema generator's reference input.
+cli/tests/
+cli/reference/

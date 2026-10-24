@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import settings
+from .extensions import load_cloud_extensions
 from .routers import admin, credits, estimate, instances, internal, jobs, uploads, webhooks
 from .routers import validate as validate_router
 from .routers import local_download as local_download_router
@@ -85,6 +86,10 @@ app.include_router(internal.router, prefix="/internal")
 
 if settings.local_mode:
     app.include_router(local_download_router.router)
+
+# Heulistic Cloud's own features, from app/cloud_only — absent in the
+# open-source build, where this registers nothing.
+cloud_features = load_cloud_extensions(app)
 
 
 @app.get("/health")

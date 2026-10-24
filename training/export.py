@@ -103,7 +103,7 @@ def gguf_name(base_model: str, job_id: str, quant: str) -> str:
 
 def disk_needed_gb(params_b: float) -> float:
     """Scratch disk an export needs at its peak; shared with the API and CLI."""
-    from heulistic_axolotl import export_scratch_gb
+    from heulistic.axolotl import export_scratch_gb
 
     return export_scratch_gb(params_b)
 

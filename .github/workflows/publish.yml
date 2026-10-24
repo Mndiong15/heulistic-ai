@@ -61,9 +61,6 @@ jobs:
           - service: scheduler
             context: ./scheduler
             dockerfile: ./scheduler/Dockerfile
-          - service: frontend
-            context: ./frontend
-            dockerfile: ./frontend/Dockerfile
           - service: frontend-local
             context: ./frontend-local
             dockerfile: ./frontend-local/Dockerfile
@@ -135,13 +132,8 @@ jobs:
           cache-from: type=gha,scope=training
           cache-to: type=gha,mode=max,scope=training
 
-  # ── CLI → PyPI ───────────────────────────────────────────────────────────────
-  # ── heulistic-axolotl → PyPI ─────────────────────────────────────────────────
-  # Published before the CLI, which declares it as a dependency. Its version
-  # moves independently of the CLI's, so most tags will re-run this job with an
-  # unchanged version — skip-existing turns that into a no-op instead of the
-  # error PyPI returns for a duplicate upload.
-  publish-pypi-axolotl:
+  # ── heulistic → PyPI ─────────────────────────────────────────────────────────
+  publish-pypi:
     needs: [check-version, publish-lightweight, publish-training]
     # PyPI is the irreversible half of a release — a version there can never be
     # reused — so it goes after the images, which can simply be overwritten.
@@ -155,57 +147,6 @@ jobs:
        (needs.check-version.result == 'success' &&
         needs.publish-lightweight.result == 'success' &&
         needs.publish-training.result == 'success'))
-    runs-on: ubuntu-latest
-    # A distinct environment from the CLI's on purpose. PyPI identifies a
-    # *pending* publisher by (owner, repo, workflow, environment) alone — the
-    # project name is not in the OIDC token — so two pending publishers cannot
-    # share one configuration. Different environments keep them apart.
-    environment: pypi-axolotl
-    permissions:
-      # A permissions block REPLACES the defaults rather than merging, so
-      # `contents: read` has to be spelled out — without it checkout cannot
-      # fetch a private repository and fails with "Repository not found".
-      id-token: write
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Build package
-        run: |
-          pip install --upgrade build
-          python -m build
-        working-directory: packages/heulistic-axolotl
-
-      # Which index is being targeted is otherwise invisible in the log, and a
-      # trusted-publishing failure looks identical on both.
-      - name: Report target index
-        run: |
-          echo "Uploading to:  $TARGET_INDEX"
-          echo "The trusted publisher must exist on THAT index, registered with:"
-          echo "  owner       = ${{ github.repository_owner }}"
-          echo "  repository  = fine-tuning-platform"
-          echo "  workflow    = publish.yml"
-          echo "  environment = ${{ github.job == 'publish-pypi-axolotl' && 'pypi-axolotl' || 'pypi' }}"
-        env:
-          TARGET_INDEX: ${{ (github.event_name == 'workflow_dispatch' && inputs.pypi_target == 'testpypi')
-            && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: packages/heulistic-axolotl/dist/
-          skip-existing: true
-          repository-url: ${{ (github.event_name == 'workflow_dispatch' && inputs.pypi_target == 'testpypi')
-            && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
-
-  # ── heulistic (CLI) → PyPI ───────────────────────────────────────────────────
-  publish-pypi:
-    needs: publish-pypi-axolotl
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -235,9 +176,9 @@ jobs:
           echo "Uploading to:  $TARGET_INDEX"
           echo "The trusted publisher must exist on THAT index, registered with:"
           echo "  owner       = ${{ github.repository_owner }}"
-          echo "  repository  = fine-tuning-platform"
+          echo "  repository  = ${{ github.event.repository.name }}"
           echo "  workflow    = publish.yml"
-          echo "  environment = ${{ github.job == 'publish-pypi-axolotl' && 'pypi-axolotl' || 'pypi' }}"
+          echo "  environment = pypi"
         env:
           TARGET_INDEX: ${{ (github.event_name == 'workflow_dispatch' && inputs.pypi_target == 'testpypi')
             && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}

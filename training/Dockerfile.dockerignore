@@ -6,9 +6,9 @@
 !training/model_eval.py
 !training/export.py
 !training/requirements.txt
-!packages/heulistic-axolotl/pyproject.toml
-!packages/heulistic-axolotl/README.md
-!packages/heulistic-axolotl/LICENSE
-!packages/heulistic-axolotl/src
+!cli/pyproject.toml
+!cli/README.md
+!cli/LICENSE
+!cli/heulistic
 **/__pycache__
 **/*.py[cod]

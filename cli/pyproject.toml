@@ -26,8 +26,8 @@ classifiers = [
 ]
 dependencies = [
     "typer>=0.12",
-    # Upper bound because the schema API can change shape between minors.
-    "heulistic-axolotl>=0.1.1,<0.2.0",  # 0.1.1: export (GGUF sizes, recommend_quant)
+    # heulistic.axolotl (the Axolotl config schema and validator) reads YAML.
+    "pyyaml>=6.0",
 ]
 
 [project.urls]
@@ -41,7 +41,5 @@ heulistic = "heulistic.main:main"
 packages = ["heulistic"]
 
 [tool.pytest.ini_options]
-# Until heulistic-axolotl is on PyPI, the sibling package is imported from the
-# monorepo. A real install resolves it through the dependency above instead.
-pythonpath = [".", "../packages/heulistic-axolotl/src"]
+pythonpath = ["."]
 testpaths = ["tests"]

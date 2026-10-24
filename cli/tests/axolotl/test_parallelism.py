@@ -13,7 +13,7 @@ a trap.
 
 import pytest
 
-from heulistic_axolotl import Hardware, plan_parallelism
+from heulistic.axolotl import Hardware, plan_parallelism
 
 QLORA_70B = {"base_model": "org/m-70b", "adapter": "qlora", "load_in_4bit": True}  # 42 GB
 LORA_7B = {"base_model": "org/m-7b", "adapter": "lora"}                            # 16.8 GB

@@ -5,11 +5,11 @@ WORKDIR /app
 COPY api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Shared Axolotl schema and config validation, used by both the API and the
-# CLI. Installed from the monorepo until it is published to PyPI — which is
-# why this image builds from the repo root rather than ./api.
-COPY packages/heulistic-axolotl /tmp/heulistic-axolotl
-RUN pip install --no-cache-dir /tmp/heulistic-axolotl && rm -rf /tmp/heulistic-axolotl
+# The heulistic package, for heulistic.axolotl — the Axolotl config schema,
+# validator and GPU planner the CLI also uses. Installed from this checkout so
+# the API always matches it, which is why the image builds from the repo root.
+COPY cli /tmp/heulistic
+RUN pip install --no-cache-dir /tmp/heulistic && rm -rf /tmp/heulistic
 
 COPY api/ .
 

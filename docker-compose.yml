@@ -43,8 +43,17 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile
-    env_file:
-      - .env.local
+    # Local-only defaults, matching the db and minio services above.
+    environment:
+      DATABASE_URL: postgresql+asyncpg://heulistic_admin:password@db:5432/heulistic
+      LOCAL_MODE: "true"
+      S3_BUCKET: heulistic-local
+      S3_ENDPOINT_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      FRONTEND_URL: http://localhost:3000
+      API_PUBLIC_URL: http://localhost:8000
+      AWS_REGION: us-east-1
     ports:
       - "8000:8000"
     depends_on:
@@ -65,9 +74,19 @@ services:
 
   scheduler:
     build: ./scheduler
-    env_file:
-      - .env.local
     environment:
+      DATABASE_URL: postgresql://heulistic_admin:password@db:5432/heulistic
+      LOCAL_MODE: "true"
+      API_INTERNAL_URL: http://api:8000
+      # Pulled from Docker Hub; build training/Dockerfile and tag it to test changes.
+      LOCAL_TRAINING_IMAGE: heulistic/training:latest
+      DOCKER_NETWORK: heulistic_default
+      LOCAL_CACHE_VOLUME: heulistic-cache
+      LOCAL_GPU: "${LOCAL_GPU:-true}"
+      GPUS_PER_JOB: "${GPUS_PER_JOB:-0}"
+      LOCAL_GPU_COUNT: "${LOCAL_GPU_COUNT:-0}"
+      HF_TOKEN: "${HF_TOKEN:-}"
+      AWS_REGION: us-east-1
       DOCKER_SOCKET: tcp://docker-proxy:2375
     depends_on:
       - api
@@ -75,9 +94,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      args:
-        NEXT_PUBLIC_LOCAL_MODE: "true"
+      context: ./frontend-local
     environment:
       API_URL: http://api:8000
     ports:

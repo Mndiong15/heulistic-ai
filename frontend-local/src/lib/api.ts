@@ -94,7 +94,7 @@ export async function estimateJob(
 /**
  * Validate an Axolotl config server-side.
  *
- * The rules live in the `heulistic-axolotl` Python package, which also backs
+ * The rules live in the `heulistic.axolotl` Python module, which also backs
  * job submission and the `heulistic validate-config` CLI — so the browser, the
  * API and the CLI cannot disagree about what a valid config is.
  *

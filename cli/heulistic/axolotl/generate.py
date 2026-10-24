@@ -1,6 +1,6 @@
 """Generate `_schema_data.py` from the vendored Axolotl config reference.
 
-    python -m heulistic_axolotl.generate
+    python -m heulistic.axolotl.generate
 
 The generated module is committed. That is deliberate: the schema then arrives
 as reviewable source, so refreshing Axolotl support produces a diff showing
@@ -23,7 +23,7 @@ _HEADER = '''\
 """Axolotl config schema — GENERATED, do not edit by hand.
 
 Source     : reference/axolotl.yaml
-Regenerate : python -m heulistic_axolotl.generate
+Regenerate : python -m heulistic.axolotl.generate
 
 Each entry is (name, raw_type, required, has_default, default, doc).
 """

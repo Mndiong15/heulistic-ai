@@ -11,8 +11,8 @@ from typer.testing import CliRunner
 
 from heulistic import gpu
 from heulistic.main import app
-from heulistic_axolotl import validate
-from heulistic_axolotl.vram import Hardware, vram_required_gb
+from heulistic.axolotl import validate
+from heulistic.axolotl.vram import Hardware, vram_required_gb
 
 runner = CliRunner()
 

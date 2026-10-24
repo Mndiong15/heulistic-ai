@@ -13,8 +13,8 @@ import re
 
 import pytest
 
-from heulistic_axolotl._reference import parse_reference
-from heulistic_axolotl.reference import reference_path, reference_text
+from heulistic.axolotl._reference import parse_reference
+from heulistic.axolotl.reference import reference_path, reference_text
 
 # Tripwire constants — see module docstring before changing.
 EXPECTED_TOP_LEVEL_FIELDS = 390
@@ -186,7 +186,7 @@ def test_enum_fields_accept_their_documented_values(ref):
 
 
 def test_provenance_is_recorded(ref):
-    from heulistic_axolotl.reference import SOURCE_URL
+    from heulistic.axolotl.reference import SOURCE_URL
 
     assert SOURCE_URL == "https://docs.axolotl.ai/docs/config-reference.html"
     assert SOURCE_URL in reference_text()

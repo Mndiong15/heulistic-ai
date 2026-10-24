@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import yaml
 
-from heulistic_axolotl import (
+from heulistic.axolotl import (
     Hardware,
     export_scratch_gb,
     parse_param_billions,
@@ -19,7 +19,7 @@ MARKUP = Decimal("2.2")
 BUFFER_FACTOR = Decimal("1.5")  # 50% buffer held at submission, refunded on settlement
 
 
-# The VRAM model lives in heulistic-axolotl, shared with the validator and the
+# The VRAM model lives in heulistic.axolotl, shared with the validator and the
 # trainer. These names are kept for existing callers and tests; they used to be
 # a private copy of the same formula, which is how selection and validation
 # came to disagree.

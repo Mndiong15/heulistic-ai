@@ -4,7 +4,7 @@ This is the module consumers use. It rebuilds a `Reference` from the generated
 `_schema_data` tables at import time — no YAML parsing, no reference file
 needed at runtime.
 
-    from heulistic_axolotl.schema import SCHEMA, get_field
+    from heulistic.axolotl.schema import SCHEMA, get_field
 
     get_field("micro_batch_size").type.accepts(4)   # True
     get_field("micro_batch_size").type.accepts(True) # False

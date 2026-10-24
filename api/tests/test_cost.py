@@ -359,7 +359,7 @@ class TestSelectionPlansPerGpu:
     GPU, and billed for the attempt."""
 
     def _plan_for(self, config, itype):
-        from heulistic_axolotl import Hardware, plan_parallelism
+        from heulistic.axolotl import Hardware, plan_parallelism
 
         from app.services.instances import get_catalog
 
@@ -423,7 +423,7 @@ class TestSelectionAgreesWithTheValidator:
     ])
     def test_the_selected_instance_passes_validation(self, config):
         import yaml
-        from heulistic_axolotl import validate
+        from heulistic.axolotl import validate
         from app.services.cost import _hardware
         from app.services.instances import get_catalog
 

@@ -1,7 +1,7 @@
 """`heulistic validate-config` — check an Axolotl config before spending a GPU hour.
 
 Deliberately offline: no Docker, no running stack, no network. The rules come
-from `heulistic-axolotl`, which carries a schema generated from Axolotl's own
+from `heulistic.axolotl`, which carries a schema generated from Axolotl's own
 config reference.
 """
 
@@ -13,7 +13,7 @@ from typing import Optional
 
 import typer
 
-from ._deps import require_axolotl
+from . import axolotl
 
 _LEVEL_COLOUR = {
     "error": typer.colors.RED,
@@ -41,7 +41,7 @@ def _summary(counts: dict[str, int]) -> str:
 def _resolve_target(use_gpu: bool, vram: Optional[float], gpus: int):
     """Return (target, notice). A notice is printed but is not a failure."""
     if vram is not None:
-        Hardware = require_axolotl().Hardware
+        Hardware = axolotl.Hardware
         return Hardware(total_vram_gb=vram, gpu_count=gpus), None
     if not use_gpu:
         return None, None
@@ -107,7 +107,7 @@ def validate_config(
         raise typer.Exit(code=2)
 
     target, notice = _resolve_target(use_gpu, vram, gpus)
-    diagnostics = require_axolotl().validate(config.read_text(), target=target)
+    diagnostics = axolotl.validate(config.read_text(), target=target)
 
     counts = {
         level: sum(1 for d in diagnostics if d.level == level)

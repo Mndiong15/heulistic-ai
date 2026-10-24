@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 
 CLI_DIR = Path(__file__).resolve().parents[1]
-PKG_SRC = CLI_DIR.parent / "packages" / "heulistic-axolotl" / "src"
 
 
 def _run_script(body: str, tmp_path: Path) -> list[str]:
@@ -31,7 +30,7 @@ def _run_script(body: str, tmp_path: Path) -> list[str]:
             [sys.executable, str(script)],
             stdout=handle,
             stderr=handle,
-            env={"PATH": "", "PYTHONPATH": f"{CLI_DIR}:{PKG_SRC}"},
+            env={"PATH": "", "PYTHONPATH": str(CLI_DIR)},
             check=True,
         )
     return [line for line in out.read_text().splitlines() if line.strip()]
@@ -81,7 +80,7 @@ def test_say_writes_to_stdout(tmp_path):
         [sys.executable, str(script)],
         capture_output=True,
         text=True,
-        env={"PATH": "", "PYTHONPATH": f"{CLI_DIR}:{PKG_SRC}"},
+        env={"PATH": "", "PYTHONPATH": str(CLI_DIR)},
     )
     assert result.stdout.strip() == "hello"
     assert result.stderr == ""

@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
-from ._deps import require_axolotl
+from . import axolotl
 
 __all__ = ["DetectedGpu", "detect_gpus", "detect_hardware"]
 
@@ -78,7 +78,7 @@ def detect_hardware() -> "Hardware | None":  # noqa: F821 - lazily imported
     cards = detect_gpus()
     if not cards:
         return None
-    Hardware = require_axolotl().Hardware
+    Hardware = axolotl.Hardware
     # Sized by the smallest card: under data parallelism every card holds the
     # whole model, and ZeRO-3 gives each an equal share, so that card is the
     # one that runs out. The trainer plans with the same rule.

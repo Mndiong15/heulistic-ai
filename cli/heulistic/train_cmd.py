@@ -11,8 +11,7 @@ from typing import Optional
 
 import typer
 
-from . import client, stack
-from ._deps import require_axolotl
+from . import axolotl, client, stack
 
 _TERMINAL_OK = "completed"
 
@@ -27,7 +26,7 @@ def _require_api() -> str:
 
 
 def _validate_or_exit(config: Path) -> None:
-    diagnostics = require_axolotl().validate(config.read_text())
+    diagnostics = axolotl.validate(config.read_text())
     errors = [d for d in diagnostics if d.level == "error"]
     warnings = [d for d in diagnostics if d.level == "warning"]
 

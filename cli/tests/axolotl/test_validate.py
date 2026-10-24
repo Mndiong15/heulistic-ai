@@ -3,11 +3,11 @@
 Rules come from three places:
 
   * the generated Axolotl schema — unknown fields, wrong types, required fields
-  * `frontend/src/lib/validate-config.ts` — the coherence and sanity rules that
-    were worth keeping, now schema-backed rather than hand-listed
+  * the coherence and sanity rules from an earlier hand-written browser
+    validator that were worth keeping, now schema-backed rather than hand-listed
   * Heulistic platform limits — single-node only
 
-Levels follow the frontend's existing contract: `error` blocks submission,
+Levels follow the dashboard's contract: `error` blocks submission,
 `warning` is likely-wrong, `info` is a suggestion.
 """
 
@@ -15,8 +15,8 @@ import textwrap
 
 import pytest
 
-from heulistic_axolotl.validate import validate
-from heulistic_axolotl.vram import Hardware
+from heulistic.axolotl.validate import validate
+from heulistic.axolotl.vram import Hardware
 
 # A config that should pass cleanly — every rule below is a mutation of this.
 CLEAN = """\

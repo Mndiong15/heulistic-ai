@@ -1,7 +1,7 @@
 """Axolotl config schema — GENERATED, do not edit by hand.
 
 Source     : reference/axolotl.yaml
-Regenerate : python -m heulistic_axolotl.generate
+Regenerate : python -m heulistic.axolotl.generate
 
 Each entry is (name, raw_type, required, has_default, default, doc).
 """

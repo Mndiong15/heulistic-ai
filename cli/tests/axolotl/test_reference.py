@@ -17,7 +17,7 @@ import textwrap
 
 import pytest
 
-from heulistic_axolotl._reference import ReferenceParseError, parse_reference
+from heulistic.axolotl._reference import ReferenceParseError, parse_reference
 
 
 def ref(src: str):

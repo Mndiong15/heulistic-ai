@@ -18,9 +18,9 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+import yaml
 
-from . import client, gpu, stack
-from ._deps import require_axolotl
+from . import axolotl, client, gpu, stack
 
 CLOUD_URL = "https://heulistic.com"
 
@@ -73,7 +73,7 @@ def _fail(message: str) -> None:
 
 
 def _choose_quant(params_b: float) -> str:
-    ax = require_axolotl()
+    ax = axolotl
     hardware = gpu.detect_hardware()
     if hardware is not None:
         where, available = f"{hardware.display_name} ({hardware.total_vram_gb:g} GB VRAM)", hardware.total_vram_gb
@@ -123,9 +123,7 @@ def export(
     if source.get("kind", "train") != "train" or source.get("status") != "completed":
         _fail(f"Job {job_id} is not a completed training job — only those can be exported.")
 
-    ax = require_axolotl()
-    import yaml  # comes with heulistic-axolotl; lazy for the reason in _deps.py
-
+    ax = axolotl
     cfg = yaml.safe_load(source.get("config_yaml") or "") or {}
     params_b = ax.parse_param_billions(str(cfg.get("base_model") or ""))
 

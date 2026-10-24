@@ -1,6 +1,6 @@
 """Axolotl config schema and validation, shared by the Heulistic CLI and API.
 
-    from heulistic_axolotl import validate, Hardware
+    from heulistic.axolotl import validate, Hardware
 
     for finding in validate(open("config.yaml").read()):
         print(finding.level, finding.code, finding.message)
