@@ -41,3 +41,5 @@ stripe-usage-billing.md
 # from CI while present locally.
 axolotl.yaml
 !packages/heulistic-axolotl/reference/axolotl.yaml
+
+CLAUDE.md
