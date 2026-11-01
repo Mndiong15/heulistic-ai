@@ -168,6 +168,30 @@ is too small, the command says so before starting; large models are what
 [Heulistic Cloud](https://heulistic.com) is for. Exporting the same format twice
 reuses the first export.
 
+## Heulistic Cloud from the CLI
+
+Once you have an account, the same commands run your jobs there:
+
+```bash
+heulistic login                          # paste an API key from heulistic.com/account
+heulistic train config.yaml              # now runs on Heulistic Cloud
+heulistic download <job-id>
+heulistic export <job-id>                # a cloud export; the GGUF downloads here
+
+heulistic train config.yaml --local      # one command on your local stack instead
+heulistic logout                         # back to local for everything
+```
+
+On a server or in CI, set `HEULISTIC_API_KEY` instead of logging in. The key
+is saved in `~/.heulistic/credentials.json`, readable only by you; revoke it at
+heulistic.com/account.
+
+| Command | |
+|---|---|
+| `heulistic login [--key KEY]` | Check the key and save it. Prompts for it (without echoing) if `--key` is omitted |
+| `heulistic logout` | Forget the key; commands use the local stack again |
+| `--local` | On `train`, `download` and `export`: use the local stack even when logged in |
+
 ## Managing the stack
 
 ### heulistic start

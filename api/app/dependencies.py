@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .config import settings
 from .database import async_session_maker
 from .models.db import User
+from .services import api_keys
 
 
 async def get_db():
@@ -19,6 +20,14 @@ async def get_current_user(
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
     token = authorization.removeprefix("Bearer ")
+
+    # An API key, from `heulistic login`. Checked first so that local mode,
+    # which takes any other token as a user id, still maps it to its owner.
+    if api_keys.is_api_key(token):
+        user = await api_keys.user_for_key(db, token)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid or revoked API key")
+        return user
 
     if settings.local_mode and not token.startswith("eyJ"):
         user_id = token.replace("dev-", "")

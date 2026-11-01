@@ -15,8 +15,9 @@ app = typer.Typer(
     # Spelled out because people reasonably assume the whole tool needs Docker.
     epilog=(
         "init and validate-config need only Python — no Docker, no stack, no "
-        "network. start, train, download and status run the local stack and "
-        "need Docker."
+        "network. start, train, download, export and status run the local stack "
+        "and need Docker — or, after `heulistic login`, train, download and "
+        "export run on Heulistic Cloud."
     ),
     no_args_is_help=True,
 )
@@ -120,9 +121,50 @@ def logs(
 
 
 @app.command()
-def login():
-    """Connect to the Heulistic cloud platform."""
-    typer.echo("Cloud login coming soon — visit https://heulistic.com to get started.")
+def login(
+    key: Optional[str] = typer.Option(
+        None, "--key", help="API key from heulistic.com/account. Prompted for if omitted."
+    ),
+    api_url: Optional[str] = typer.Option(
+        None, "--api-url", help="Log in to a different Heulistic API (testing, self-hosting)."
+    ),
+):
+    """Log in to Heulistic Cloud with an API key, so commands run there."""
+    from . import client, session
+
+    url = (api_url or session.CLOUD_API_URL).rstrip("/")
+    if key is None:
+        typer.echo("Create a key at https://heulistic.com/account, then paste it here.")
+        key = typer.prompt("API key", hide_input=True)
+    key = key.strip()
+    if not key.startswith("hk_"):
+        typer.secho("That is not a Heulistic API key — keys start with hk_.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    client.use(session.Session(url, key, cloud=True))
+    try:
+        me = client.me(url)
+    except client.ApiError as exc:
+        typer.secho(f"Login failed: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    session.save(key, url)
+    typer.secho(f"Logged in to Heulistic Cloud as {me['email']}.", fg=typer.colors.GREEN)
+    if me.get("billing_enabled"):
+        typer.echo(f"  Credit balance: ${me['credit_balance_cents'] / 100:.2f}")
+    typer.echo("  train, download and export now run there; add --local to use your local stack.")
+    typer.echo("  heulistic logout to switch back.")
+
+
+@app.command()
+def logout():
+    """Forget the Heulistic Cloud API key; commands go back to the local stack."""
+    from . import session
+
+    if session.clear():
+        typer.echo("Logged out of Heulistic Cloud. Commands use your local stack again.")
+    else:
+        typer.echo("Not logged in.")
 
 
 def main():

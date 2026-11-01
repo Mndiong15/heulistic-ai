@@ -14,7 +14,7 @@ from typing import Optional
 
 import typer
 
-from . import client, stack
+from . import client, session
 
 _SUFFIX = "-model.tar.gz"
 
@@ -44,13 +44,12 @@ def download(
     url_only: bool = typer.Option(
         False, "--url-only", help="Print the download URL instead of fetching it."
     ),
+    local: bool = typer.Option(
+        False, "--local", help="Use the local stack even when logged in to Heulistic Cloud."
+    ),
 ) -> None:
     """Download the trained model for a completed job."""
-    api_url = stack.api_url()
-    if not api_url:
-        typer.secho("Heulistic is not running.", fg=typer.colors.RED)
-        typer.echo("Start it with: heulistic start")
-        raise typer.Exit(code=1)
+    api_url = session.connect(local)
 
     try:
         job = client.get_job(api_url, job_id)

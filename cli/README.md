@@ -17,7 +17,7 @@ command** — only for the ones that run the training stack.
 |---|---|
 | `heulistic init` — write a starter config, sized to your GPU | no |
 | `heulistic validate-config` — check a config against Axolotl's schema | no |
-| `heulistic start` / `train` / `download` / `status` | yes |
+| `heulistic start` / `train` / `export` / `download` / `status` | yes |
 
 So you can install it purely to check configs — offline, with nothing else
 running. Training needs Docker, plus an NVIDIA GPU and the Container Toolkit
@@ -33,7 +33,7 @@ heulistic init                        # starter config, sized to your GPU
 heulistic validate-config config.yaml # check it — offline, no Docker needed
 heulistic start                       # bring the local stack up
 heulistic train config.yaml           # submit and follow the logs
-heulistic download <job-id>           # collect the trained model
+heulistic export <job-id>             # GGUF + Ollama Modelfile, ready to run
 ```
 
 ## Training from the terminal
@@ -55,6 +55,31 @@ heulistic download <job-id>              # ./<job-id>-model.tar.gz
 heulistic download <job-id> -o model.tgz
 heulistic download <job-id> --url-only
 ```
+
+## Did it help? Before vs after
+
+When a training job finishes, Heulistic scores the base model and your
+fine-tune on rows held out of training (5% of the dataset, at most 50, for
+datasets of 100+ rows) and shows the loss for each plus three answers side by
+side in the dashboard. Set `val_set_size: 0` in your config to keep every row
+for training, or set your own `val_set_size` to choose the split.
+
+## Running it with Ollama
+
+```bash
+heulistic export <job-id>                # best format for this machine, added to Ollama
+heulistic export <job-id> -q Q8_0        # choose: Q4_K_M, Q5_K_M or Q8_0
+heulistic export <job-id> --no-ollama    # just write the files
+ollama run heulistic-<first 8 of the job id>
+```
+
+Export merges the trained adapter into the base model, quantizes it to GGUF,
+and writes an Ollama Modelfile whose prompt template matches the one the model
+was trained with — so it answers the way it did in training. Without `-q`, the
+format is chosen from your GPU's memory, or your RAM when there is no NVIDIA
+GPU. It runs in the local stack and needs free disk for two full-precision
+copies of the model while it works (about 48 GB for a 7B model); the command
+checks first.
 
 ## Starting from a working config
 
@@ -157,6 +182,22 @@ Heulistic local stack
   Jobs: 1 completed, 2 running
 ```
 
-## Managed Cloud
+## Heulistic Cloud
 
 Need more GPU or don't want to manage infrastructure? [Heulistic Cloud](https://heulistic.com) handles provisioning, scaling, and cost — pay only for what you use.
+
+Once you have an account, the same commands run your jobs there:
+
+```bash
+heulistic login                          # paste an API key from heulistic.com/account
+heulistic train config.yaml              # now runs on Heulistic Cloud
+heulistic download <job-id>
+heulistic export <job-id>                # a cloud export; the GGUF downloads here
+
+heulistic train config.yaml --local      # one command on your local stack instead
+heulistic logout                         # back to local for everything
+```
+
+On a server or in CI, set `HEULISTIC_API_KEY` instead of logging in. The key
+is saved in `~/.heulistic/credentials.json`, readable only by you; revoke it at
+heulistic.com/account.

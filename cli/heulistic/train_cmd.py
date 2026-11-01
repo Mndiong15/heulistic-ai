@@ -11,18 +11,9 @@ from typing import Optional
 
 import typer
 
-from . import axolotl, client, stack
+from . import axolotl, client, session
 
 _TERMINAL_OK = "completed"
-
-
-def _require_api() -> str:
-    api_url = stack.api_url()
-    if not api_url:
-        typer.secho("Heulistic is not running.", fg=typer.colors.RED)
-        typer.echo("Start it with: heulistic start")
-        raise typer.Exit(code=1)
-    return api_url
 
 
 def _validate_or_exit(config: Path) -> None:
@@ -71,9 +62,12 @@ def train(
     do_validate: bool = typer.Option(
         True, "--validate/--no-validate", help="Check the config before submitting."
     ),
+    local: bool = typer.Option(
+        False, "--local", help="Use the local stack even when logged in to Heulistic Cloud."
+    ),
 ) -> None:
     """Submit a fine-tuning job and stream its logs."""
-    api_url = _require_api()
+    api_url = session.connect(local)
 
     if do_validate:
         _validate_or_exit(config)
@@ -88,7 +82,8 @@ def train(
     typer.secho(f"Submitted {job_id}", fg=typer.colors.GREEN)
 
     if detach:
-        typer.echo(f"Follow it with: heulistic logs   ·   status: heulistic status")
+        hint = session.job_hint(session.resolve(local), job_id)
+        typer.echo(hint[:1].upper() + hint[1:])
         raise typer.Exit(code=0)
 
     typer.echo()
@@ -101,7 +96,7 @@ def train(
         typer.echo()
         typer.secho(
             f"Stopped following. The job is still running — "
-            f"check it with: heulistic status",
+            f"{session.job_hint(session.resolve(local), job_id)}",
             fg=typer.colors.YELLOW,
         )
         raise typer.Exit(code=0)

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import typer
 
-from . import stack
+from . import session, stack
 
 _STATE_COLOUR = {"running": typer.colors.GREEN, "exited": typer.colors.RED}
 
@@ -46,6 +46,11 @@ def _print_jobs(api_base: str) -> None:
 
 def status() -> None:
     """Show the state of the local Heulistic stack."""
+    current = session.resolve()
+    if current.cloud:
+        typer.echo(f"Logged in to Heulistic Cloud ({current.api_url}) — train, download and "
+                   "export run there; --local uses this stack.")
+        typer.echo()
     present = {service.name: service for service in stack.services()}
 
     if not any(name in present for name in _CORE_SERVICES):

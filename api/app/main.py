@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import settings
 from .extensions import load_cloud_extensions
-from .routers import admin, credits, estimate, instances, internal, jobs, uploads, webhooks
+from .routers import admin, api_keys, credits, estimate, instances, internal, jobs, uploads, webhooks
 from .routers import validate as validate_router
 from .routers import local_download as local_download_router
 
@@ -81,6 +81,7 @@ app.include_router(validate_router.router, prefix="/api")
 app.include_router(instances.router, prefix="/api")
 app.include_router(credits.router, prefix="/api")
 app.include_router(uploads.router, prefix="/api")
+app.include_router(api_keys.router, prefix="/api")
 app.include_router(webhooks.router, prefix="/api")
 app.include_router(internal.router, prefix="/internal")
 

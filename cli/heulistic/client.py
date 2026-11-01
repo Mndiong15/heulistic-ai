@@ -36,8 +36,19 @@ class ApiError(Exception):
     """The API refused the request, carrying its `detail` where there is one."""
 
 
+# The bearer token for this command: the local stack's placeholder, or an API
+# key when the command goes to Heulistic Cloud (see session.py).
+_token = DEV_TOKEN
+
+
+def use(current) -> None:
+    """Send this command's requests with `current`'s token."""
+    global _token
+    _token = current.token
+
+
 def _headers(content_type: str | None = None) -> dict[str, str]:
-    headers = {"Authorization": f"Bearer {DEV_TOKEN}"}
+    headers = {"Authorization": f"Bearer {_token}"}
     if content_type:
         headers["Content-Type"] = content_type
     return headers
@@ -123,6 +134,11 @@ def submit(
         "POST", f"{api_url}/api/jobs", body=body, content_type=content_type
     )
     return json.loads(raw)
+
+
+def me(api_url: str) -> dict:
+    """Who the current token belongs to: email, credit balance, billing on/off."""
+    return json.loads(_request("GET", f"{api_url}/api/me"))
 
 
 def get_job(api_url: str, job_id: str) -> dict:

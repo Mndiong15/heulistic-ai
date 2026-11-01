@@ -20,7 +20,7 @@ from typing import Optional
 import typer
 import yaml
 
-from . import axolotl, client, gpu, stack
+from . import axolotl, client, gpu, session
 
 CLOUD_URL = "https://heulistic.com"
 
@@ -108,13 +108,13 @@ def export(
     register: bool = typer.Option(
         True, "--ollama/--no-ollama", help="Run `ollama create` if Ollama is installed."
     ),
+    local: bool = typer.Option(
+        False, "--local", help="Use the local stack even when logged in to Heulistic Cloud."
+    ),
 ) -> None:
     """Export a trained model to GGUF and set it up for Ollama."""
-    api_url = stack.api_url()
-    if not api_url:
-        typer.secho("Heulistic is not running.", fg=typer.colors.RED)
-        typer.echo("Start it with: heulistic start")
-        raise typer.Exit(code=1)
+    api_url = session.connect(local)
+    cloud = session.resolve(local).cloud
 
     try:
         source = client.get_job(api_url, job_id)
@@ -145,8 +145,10 @@ def export(
         export_id = existing["job_id"]
         typer.echo(f"Using the existing {quant} export ({export_id}).")
     else:
+        # A cloud export runs on a machine sized for it; only a local one
+        # needs this machine's disk.
         need = ax.export_scratch_gb(params_b)
-        free = _free_disk_gb()
+        free = None if cloud else _free_disk_gb()
         if free is not None and free < need:
             _fail(
                 f"Exporting this {params_b:g}B model needs about {need:.0f} GB of free disk "

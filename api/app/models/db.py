@@ -84,6 +84,23 @@ class Job(Base):
     logs: Mapped[list["Log"]] = relationship(back_populates="job", cascade="all, delete-orphan")
 
 
+class ApiKey(Base):
+    """A key the CLI signs in with (`heulistic login`). Only the SHA-256 of the
+    key is stored; the key itself is shown once, when it is created."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    # The start of the key, so a list of keys can say which is which.
+    prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
 class SchedulerHeartbeat(Base):
     """Singleton row (id=1) written by the scheduler on every tick."""
     __tablename__ = "scheduler_heartbeat"
