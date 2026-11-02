@@ -40,6 +40,11 @@ class AdminUserItem(BaseModel):
     email: str
     credit_balance_cents: int
     job_count: int
+    disabled: bool
+
+
+class SetDisabledRequest(BaseModel):
+    disabled: bool
 
 
 class AdjustCreditsRequest(BaseModel):
@@ -159,9 +164,28 @@ async def list_all_users(
             email=user.email,
             credit_balance_cents=user.credit_balance_cents,
             job_count=job_count,
+            disabled=user.disabled_at is not None,
         )
         for user, job_count in result.all()
     ]
+
+
+@router.put("/users/{user_id}/disabled", response_model=SetDisabledRequest)
+async def set_user_disabled(
+    user_id: str,
+    body: SetDisabledRequest,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Block an account's sign-in and API keys. Jobs already queued still run."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == admin.id:
+        raise HTTPException(status_code=409, detail="You cannot disable your own account")
+    target.disabled_at = datetime.now(timezone.utc).replace(tzinfo=None) if body.disabled else None
+    await db.commit()
+    return body
 
 
 @router.post("/users/{user_id}/credits", response_model=AdjustCreditsResponse)

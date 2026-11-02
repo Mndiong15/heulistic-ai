@@ -37,7 +37,7 @@ def api(monkeypatch):
 
 
 def test_login_checks_the_key_then_saves_it(api):
-    result = runner.invoke(app, ["login", "--key", "hk_good"])
+    result = runner.invoke(app, ["login"], input="hk_good\n")
     assert result.exit_code == 0, result.output
     assert "you@example.com" in result.output
     assert "$12.50" in result.output
@@ -57,26 +57,48 @@ def test_a_rejected_key_is_not_saved(api, monkeypatch):
         raise client.ApiError("Invalid or revoked API key")
 
     monkeypatch.setattr(client, "me", refuse)
-    result = runner.invoke(app, ["login", "--key", "hk_bad"])
+    result = runner.invoke(app, ["login"], input="hk_bad\n")
     assert result.exit_code == 1
     assert "Invalid or revoked API key" in result.output
     assert session.resolve().cloud is False
 
 
 def test_something_that_is_not_a_key_is_refused_before_asking_the_server(api):
-    result = runner.invoke(app, ["login", "--key", "eyJhbGciOi.jwt"])
+    result = runner.invoke(app, ["login"], input="eyJhbGciOi.jwt\n")
     assert result.exit_code == 1
     assert "hk_" in result.output
     assert api == []
 
 
 def test_login_can_target_another_api(api):
-    runner.invoke(app, ["login", "--key", "hk_good", "--api-url", "http://localhost:8000/"])
+    runner.invoke(app, ["login", "--api-url", "http://localhost:8000/"], input="hk_good\n")
     assert session.resolve().api_url == "http://localhost:8000"
 
 
+def test_a_key_cannot_be_passed_on_the_command_line(api):
+    # It would land in shell history and the process list.
+    result = runner.invoke(app, ["login", "--key", "hk_good"])
+    assert result.exit_code != 0
+    assert session.resolve().cloud is False
+
+
+@pytest.mark.parametrize("url", ["https://api.example.com", "http://127.0.0.1:8000", "http://[::1]:8000"])
+def test_login_accepts_https_and_loopback(api, url):
+    result = runner.invoke(app, ["login", "--api-url", url], input="hk_good\n")
+    assert result.exit_code == 0, result.output
+
+
+@pytest.mark.parametrize("url", ["http://api.example.com", "http://localhost.example.com", "ftp://x"])
+def test_login_will_not_send_a_key_unencrypted(api, url):
+    result = runner.invoke(app, ["login", "--api-url", url], input="hk_good\n")
+    assert result.exit_code == 1
+    assert "https" in result.output
+    assert api == []
+    assert session.resolve().cloud is False
+
+
 def test_logout(api):
-    runner.invoke(app, ["login", "--key", "hk_good"])
+    runner.invoke(app, ["login"], input="hk_good\n")
     result = runner.invoke(app, ["logout"])
     assert result.exit_code == 0
     assert session.resolve().cloud is False

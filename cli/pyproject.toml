@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "heulistic"
-version = "0.1.5"
+version = "0.1.6"
 description = "Fine-tune LLMs without the infrastructure"
 readme = "README.md"
 license = "MIT"

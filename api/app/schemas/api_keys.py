@@ -16,6 +16,7 @@ class ApiKeyInfo(BaseModel):
     prefix: str
     created_at: UTCDatetime
     last_used_at: UTCDatetime | None
+    expires_at: UTCDatetime
 
 
 class CreatedKey(ApiKeyInfo):

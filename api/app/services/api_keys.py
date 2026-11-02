@@ -7,11 +7,13 @@ tokens. A full 256-bit key needs no slow hash: it cannot be guessed.
 
 import hashlib
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..models.db import ApiKey, User
 
 PREFIX = "hk_"
@@ -39,13 +41,31 @@ def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-async def user_for_key(db: AsyncSession, key: str) -> User | None:
-    """The owner of an active key, or None."""
-    row = (
+def expiry() -> datetime:
+    """When a key created now stops working."""
+    return _now() + timedelta(days=settings.api_key_lifetime_days)
+
+
+async def _active(db: AsyncSession, key: str) -> ApiKey | None:
+    return (
         await db.execute(
-            select(ApiKey).where(ApiKey.key_hash == hash_key(key), ApiKey.revoked_at.is_(None))
+            select(ApiKey).where(
+                ApiKey.key_hash == hash_key(key),
+                ApiKey.revoked_at.is_(None),
+                ApiKey.expires_at > _now(),
+            )
         )
     ).scalar_one_or_none()
+
+
+async def key_id(db: AsyncSession, key: str) -> uuid.UUID | None:
+    row = await _active(db, key)
+    return row.id if row else None
+
+
+async def user_for_key(db: AsyncSession, key: str) -> User | None:
+    """The owner of an active key, or None."""
+    row = await _active(db, key)
     if row is None:
         return None
     now = _now()

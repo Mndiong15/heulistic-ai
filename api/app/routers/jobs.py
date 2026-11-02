@@ -27,7 +27,7 @@ from heulistic.axolotl import (
 )
 
 from ..config import settings
-from ..dependencies import get_current_user, get_db
+from ..dependencies import get_api_key_id, get_current_user, get_db
 from ..models.db import CreditTransaction, Job, Log, Metric, User
 from ..schemas.jobs import (
     DownloadResponse,
@@ -292,6 +292,30 @@ async def _check_uploaded_dataset(
     return s3_service.s3_path_for(key), size // _MB
 
 
+async def _check_key_spend(db: AsyncSession, api_key_id: uuid.UUID | None, held_cents: int) -> None:
+    """Limit what one API key can commit in 24 hours, so a leaked key cannot
+    drain an account. Finished jobs count at what they cost, the rest at their
+    hold. Website logins are not capped."""
+    if api_key_id is None or not settings.billing_enabled:
+        return
+    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
+    spent = await db.scalar(
+        select(func.sum(func.coalesce(Job.actual_cost, Job.estimated_cost))).where(
+            Job.api_key_id == api_key_id,
+            Job.created_at >= since,
+        )
+    )
+    cap = settings.api_key_daily_spend_cents
+    if int((spent or 0) * 100) + held_cents > cap:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"This job would take this API key past its limit of ${cap / 100:.2f} in 24 hours. "
+                "Submit it from the website, or wait."
+            ),
+        )
+
+
 @router.post("", response_model=JobSubmitResponse, status_code=201)
 async def submit_job(
     config: UploadFile = File(...),
@@ -300,6 +324,7 @@ async def submit_job(
     instance_type: str | None = Form(default=None),
     dataset_key: str | None = Form(default=None),
     user: User = Depends(get_current_user),
+    api_key_id: uuid.UUID | None = Depends(get_api_key_id),
     db: AsyncSession = Depends(get_db),
 ):
     if dataset is not None and dataset_key:
@@ -361,6 +386,7 @@ async def submit_job(
     # Credit balance check — require 1.5× the estimate as a buffer against overruns
     estimated_cost_cents = int(float(estimate["estimated_cost"]) * 100)
     held_cents = math.ceil(estimated_cost_cents * float(BUFFER_FACTOR))
+    await _check_key_spend(db, api_key_id, held_cents)
     if settings.billing_enabled:
         # Re-fetch user with a lock to get current balance
         result = await db.execute(select(User).where(User.id == user.id).with_for_update())
@@ -438,6 +464,7 @@ async def submit_job(
     job = Job(
         id=job_id,
         session_id=user.id,
+        api_key_id=api_key_id,
         status="pending",
         config_yaml=config_bytes.decode(),
         config_name=parsed_config.get("base_model", "unknown"),
@@ -608,6 +635,7 @@ async def start_export(
     job_id: uuid.UUID,
     req: ExportRequest,
     user: User = Depends(get_current_user),
+    api_key_id: uuid.UUID | None = Depends(get_api_key_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Queue an export of a finished training job's model to GGUF for Ollama.
@@ -636,6 +664,7 @@ async def start_export(
     estimate = cost_service.export_estimate(cfg)
     estimated_cost_cents = int(float(estimate["estimated_cost"]) * 100)
     held_cents = math.ceil(estimated_cost_cents * float(BUFFER_FACTOR))
+    await _check_key_spend(db, api_key_id, held_cents)
     new_id = uuid.uuid4()
 
     if settings.billing_enabled:
@@ -668,6 +697,7 @@ async def start_export(
     job = Job(
         id=new_id,
         session_id=user.id,
+        api_key_id=api_key_id,
         status="pending",
         kind="export",
         source_job_id=source.id,
@@ -844,6 +874,7 @@ async def cancel_job(
 async def resume_job(
     job_id: uuid.UUID,
     user: User = Depends(get_current_user),
+    api_key_id: uuid.UUID | None = Depends(get_api_key_id),
     db: AsyncSession = Depends(get_db),
 ):
     source = await _get_job_or_404(db, job_id, user.id, is_admin=settings.is_admin(user.email))
@@ -859,6 +890,7 @@ async def resume_job(
     estimated_cost_cents = int(float(estimate["estimated_cost"]) * 100)
     held_cents = math.ceil(estimated_cost_cents * float(BUFFER_FACTOR))
     held_cost = Decimal(str(held_cents)) / 100
+    await _check_key_spend(db, api_key_id, held_cents)
 
     new_job_id = uuid.uuid4()
 
@@ -894,6 +926,7 @@ async def resume_job(
     job = Job(
         id=new_job_id,
         session_id=user.id,
+        api_key_id=api_key_id,
         status="pending",
         config_yaml=source.config_yaml,
         config_name=source.config_name,

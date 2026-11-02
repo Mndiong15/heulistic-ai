@@ -122,9 +122,6 @@ def logs(
 
 @app.command()
 def login(
-    key: Optional[str] = typer.Option(
-        None, "--key", help="API key from heulistic.com/account. Prompted for if omitted."
-    ),
     api_url: Optional[str] = typer.Option(
         None, "--api-url", help="Log in to a different Heulistic API (testing, self-hosting)."
     ),
@@ -133,10 +130,11 @@ def login(
     from . import client, session
 
     url = (api_url or session.CLOUD_API_URL).rstrip("/")
-    if key is None:
-        typer.echo("Create a key at https://heulistic.com/account, then paste it here.")
-        key = typer.prompt("API key", hide_input=True)
-    key = key.strip()
+    if not session.is_safe_url(url):
+        typer.secho(f"Refusing to send a key to {url}: use https.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    typer.echo("Create a key at https://heulistic.com/account, then paste it here.")
+    key = typer.prompt("API key", hide_input=True).strip()
     if not key.startswith("hk_"):
         typer.secho("That is not a Heulistic API key — keys start with hk_.", fg=typer.colors.RED)
         raise typer.Exit(code=1)

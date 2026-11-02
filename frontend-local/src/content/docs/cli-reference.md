@@ -184,11 +184,12 @@ heulistic logout                         # back to local for everything
 
 On a server or in CI, set `HEULISTIC_API_KEY` instead of logging in. The key
 is saved in `~/.heulistic/credentials.json`, readable only by you; revoke it at
-heulistic.com/account.
+heulistic.com/account. Keys last a year and can commit up to $100 in 24 hours;
+jobs bigger than that go through the website.
 
 | Command | |
 |---|---|
-| `heulistic login [--key KEY]` | Check the key and save it. Prompts for it (without echoing) if `--key` is omitted |
+| `heulistic login` | Ask for the key without echoing it, check it and save it. `--api-url` for a self-hosted API (https, or http on this machine) |
 | `heulistic logout` | Forget the key; commands use the local stack again |
 | `--local` | On `train`, `download` and `export`: use the local stack even when logged in |
 

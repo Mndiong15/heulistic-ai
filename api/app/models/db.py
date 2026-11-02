@@ -20,6 +20,8 @@ class User(Base):
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     stripe_payment_method_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     payment_past_due: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
+    # Blocks sign-in and API keys alike. Set from the admin page.
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class CreditTransaction(Base):
@@ -40,6 +42,8 @@ class Job(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    # The API key that started this job, for the daily spend cap; null from the website.
+    api_key_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("api_keys.id"), index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     config_yaml: Mapped[str] = mapped_column(Text, nullable=False)
     config_name: Mapped[str | None] = mapped_column(String(255))
@@ -98,6 +102,7 @@ class ApiKey(Base):
     prefix: Mapped[str] = mapped_column(String(16), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 

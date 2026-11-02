@@ -277,3 +277,30 @@ class TestAdminMetrics:
         assert isinstance(data["jobs_per_day"], list)
         assert isinstance(data["revenue_per_day"], list)
         assert isinstance(data["new_users_per_day"], list)
+
+
+# ── PUT /api/admin/users/:id/disabled ─────────────────────────────────────────
+
+
+class TestDisableUser:
+    async def test_disable_and_enable(self, admin_client, client):
+        url = f"/api/admin/users/{SESSION_ID}/disabled"
+        assert (await admin_client.put(url, json={"disabled": True})).status_code == 200
+        users = (await admin_client.get("/api/admin/users")).json()
+        assert next(u for u in users if u["id"] == SESSION_ID)["disabled"] is True
+
+        assert (await admin_client.put(url, json={"disabled": False})).status_code == 200
+        users = (await admin_client.get("/api/admin/users")).json()
+        assert next(u for u in users if u["id"] == SESSION_ID)["disabled"] is False
+
+    async def test_you_cannot_lock_yourself_out(self, admin_client):
+        resp = await admin_client.put(f"/api/admin/users/{ADMIN_ID}/disabled", json={"disabled": True})
+        assert resp.status_code == 409
+
+    async def test_unknown_user(self, admin_client):
+        resp = await admin_client.put("/api/admin/users/nobody/disabled", json={"disabled": True})
+        assert resp.status_code == 404
+
+    async def test_admins_only(self, client):
+        resp = await client.put(f"/api/admin/users/{SESSION_ID}/disabled", json={"disabled": True})
+        assert resp.status_code == 403

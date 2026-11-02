@@ -13,6 +13,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import typer
 
@@ -63,6 +64,14 @@ def clear() -> bool:
         return True
     except FileNotFoundError:
         return False
+
+
+def is_safe_url(url: str) -> bool:
+    """Whether a key may be sent here: over HTTPS, or to this machine."""
+    parts = urlsplit(url)
+    return parts.scheme == "https" or (
+        parts.scheme == "http" and parts.hostname in ("localhost", "127.0.0.1", "::1")
+    )
 
 
 def resolve(local: bool = False) -> Session:

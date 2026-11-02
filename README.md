@@ -130,7 +130,8 @@ heulistic logout                         # back to local for everything
 
 On a server or in CI, set `HEULISTIC_API_KEY` instead of logging in. The key
 is saved in `~/.heulistic/credentials.json`, readable only by you; revoke it at
-heulistic.com/account.
+heulistic.com/account. Keys last a year and can commit up to $100 in 24 hours;
+jobs bigger than that go through the website.
 
 ## License
 

@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # job, so a long queue cannot spend more than the balance holds.
     max_unfinished_jobs_per_user: int = 50
     max_submissions_per_hour: int = 100
+    # API keys: a leaked key can commit at most this much in any 24 hours, and
+    # stops working after this long. Jobs from the website are not capped.
+    api_key_daily_spend_cents: int = 10_000
+    api_key_lifetime_days: int = 365
     # Datasets reach S3 directly from the browser, so the cap is about the
     # training instance's disk (200 GB, shared with the model and checkpoints),
     # not the API. Uploads that do pass through the API are spooled to its disk
